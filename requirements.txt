@@ -16,3 +16,4 @@ numpy
 langchain-groq
 openpyxl
 tabulate
+gunicorn
