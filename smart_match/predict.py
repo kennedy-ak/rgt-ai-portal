@@ -1,7 +1,10 @@
+
+
 import pandas as pd
 import ast
 from scipy.spatial.distance import cosine
 from sentence_transformers import SentenceTransformer
+from rapidfuzz import fuzz  # Faster alternative to fuzzywuzzy
 
 # Load Sentence Transformer Model
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -15,6 +18,12 @@ df["embedding"] = df["embedding"].apply(ast.literal_eval)
 
 def generate_embedding(text: str):
     return embedder.encode(text).tolist()
+
+# Function to check if the job title is similar to the applied position
+
+
+def is_similar(job_title: str, applied_position: str, threshold=80):
+    return fuzz.partial_ratio(job_title.lower(), applied_position.lower()) >= threshold
 
 # Function to match jobs (excluding applied position from results)
 
@@ -31,7 +40,7 @@ def match_jobs_to_applicant(profile: str, applied_position: str, jobs_df: pd.Dat
     filtered_matches = [
         (row[0].replace(".pdf", ""), row[1])
         for row in job_matches
-        if applied_position.lower() not in row[0].lower()
+        if not is_similar(row[0].replace(".pdf", ""), applied_position)
     ]
 
     # If all jobs are filtered out, return a default message

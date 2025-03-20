@@ -54,6 +54,16 @@ def predict(employee: EmployeeData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+# @app.post("/match-job")
+# def match_job(request: JobRequest):
+#     try:
+#         best_job = match_jobs_to_applicant(
+#             request.profile, request.applied_position, df)
+#         return best_job
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+    
+
 @app.post("/match-job")
 def match_job(request: JobRequest):
     try:
@@ -62,7 +72,7 @@ def match_job(request: JobRequest):
         return best_job
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 
 @app.post("/analyze", response_model=AnalysisResponse)         
