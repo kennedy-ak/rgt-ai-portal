@@ -18,7 +18,7 @@ class PredictionResponse(BaseModel):
 # Load the model
 def load_model():
     try:
-        with open('attrition/best_model.pkl', 'rb') as file:
+        with open('attrition/best_tuned_model.pkl', 'rb') as file:
             model = pickle.load(file)
         return model
     except Exception as e:
