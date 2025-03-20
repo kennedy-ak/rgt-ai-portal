@@ -18,3 +18,9 @@ openpyxl
 tabulate
 gunicorn
 RapidFuzz
+langchain
+pydantic
+torch
+transformers
+langchain_community
+pypdf

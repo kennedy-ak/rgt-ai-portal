@@ -2,7 +2,10 @@ from fastapi import FastAPI, HTTPException,UploadFile, File,Body
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
+import os
 import markdown
+from typing import Dict,Any
+import tempfile
 from pydantic import BaseModel
 from attrition.predictor import EmployeeData, PredictionResponse, predict_attrition
 from smart_match.predict import match_jobs_to_applicant, df
@@ -11,6 +14,12 @@ from nsp_retention.nsp_analyzer import NSPAnalyzer, NSPVisualizer, generate_reco
 from nsp_retention.nsp_models import (    
     RecommendationRequest, RecommendationResponse, ReportResponse,
     AnalysisResponse, )
+
+
+from cv_screening.schemas import StageConfidence, ApplicantData, ApplicantPrediction
+from cv_screening.model_utils import initialize_models,predict_applicant_score
+from cv_screening.cv_processor import process_cv, create_cv_text
+
 # Initialize FastAPI app
 app = FastAPI(
     title="RGT API Project",
@@ -198,6 +207,71 @@ async def generate_full_report(file: UploadFile = File(..., description="Excel f
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+ 
+
+
+@app.post("/upload-cv/")
+async def upload_cv(file: UploadFile = File(...)):
+    """Upload and process a CV file, and return extracted information"""
+    try:
+        # Save the uploaded file to a temporary location
+        temp_file_path = None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+
+        # Process the CV file
+        cv_info = process_cv(temp_file_path)
+
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+
+        if "error" in cv_info:
+            raise HTTPException(
+                status_code=400, detail=f"Error processing CV: {cv_info['error']}")
+
+        # Return all extracted information directly
+        return cv_info
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing request: {str(e)}")
+
+
+@app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
+async def predict_applicant(applicant_data: ApplicantData):
+    """Predict applicant score and stage using provided data"""
+    from cv_screening.model_utils import model
+    
+    if model is None:
+        raise HTTPException(
+            status_code=503, detail="Model not loaded. Please try again later.")
+
+    try:
+        # Create CV text from applicant data
+        cv_text = create_cv_text(applicant_data)
+
+        # Make prediction
+        score, stage, stage_confidences_data = predict_applicant_score(applicant_data, cv_text)
+        
+        # Create stage confidences objects
+        stage_confidences = [
+            StageConfidence(stage=conf["stage"], confidence=conf["confidence"])
+            for conf in stage_confidences_data
+        ]
+
+        return ApplicantPrediction(
+            position=applicant_data.position,
+            score=score,
+            predicted_stage=stage,
+            stage_confidences=stage_confidences
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Prediction error: {str(e)}")
 
  
 if __name__ == "__main__":
