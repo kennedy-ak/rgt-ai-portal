@@ -23,7 +23,7 @@ from cv_screening.cv_processor import process_cv, create_cv_text
 # Initialize FastAPI app
 app = FastAPI(
     title="RGT API Project",
-    description="API for all the protals",
+    description="AI APIs for RGT Portal",
     version="1.0.0"
 )
 
@@ -54,6 +54,35 @@ def read_root():
 def health_check():
     return {"status": "healthy",  "timestamp": datetime.now().isoformat()}
 # Prediction endpoint
+
+@app.post("/upload-cv/")
+async def upload_cv(file: UploadFile = File(...)):
+    """Upload and process a CV file, and return extracted information"""
+    try:
+        # Save the uploaded file to a temporary location
+        temp_file_path = None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+
+        # Process the CV file
+        cv_info = process_cv(temp_file_path)
+
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+
+        if "error" in cv_info:
+            raise HTTPException(
+                status_code=400, detail=f"Error processing CV: {cv_info['error']}")
+
+        # Return all extracted information directly
+        return cv_info
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing request: {str(e)}")
+
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(employee: EmployeeData):
@@ -193,34 +222,6 @@ async def generate_full_report(file: UploadFile = File(..., description="Excel f
 
  
 
-
-@app.post("/upload-cv/")
-async def upload_cv(file: UploadFile = File(...)):
-    """Upload and process a CV file, and return extracted information"""
-    try:
-        # Save the uploaded file to a temporary location
-        temp_file_path = None
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name
-
-        # Process the CV file
-        cv_info = process_cv(temp_file_path)
-
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-
-        if "error" in cv_info:
-            raise HTTPException(
-                status_code=400, detail=f"Error processing CV: {cv_info['error']}")
-
-        # Return all extracted information directly
-        return cv_info
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error processing request: {str(e)}")
 
 
 # @app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
