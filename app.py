@@ -4,7 +4,7 @@ import pandas as pd
 import io
 import os
 import markdown
-from typing import Dict,Any
+from typing import Dict,Any ,Optional
 import tempfile
 from pydantic import BaseModel
 from attrition.predictor import EmployeeData, PredictionResponse, predict_attrition
@@ -30,6 +30,7 @@ app = FastAPI(
 # Set Groq API key - in production, use environment variables
 GROQ_API_KEY = "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"
 
+analysis_cache = {}
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -136,43 +137,25 @@ async def analyze_nsp_data(file: UploadFile = File(..., description="Excel file 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/recommendations",response_model=RecommendationResponse) 
-async def get_recommendations(request: RecommendationRequest = Body(..., 
-                                                                  description="Subject metrics data",
-                                                                  example={
-                                                                      "subject_data": [
-                                                                          {
-                                                                              "Subject": "Computer Science",
-                                                                              "Total Candidates": 50,
-                                                                              "Hired": 35,
-                                                                              "Not Hired": 10,
-                                                                              "Offered Bootcamp": 5,
-                                                                              "Hire Rate (%)": 70.0
-                                                                          },
-                                                                          {
-                                                                              "Subject": "Information Technology",
-                                                                              "Total Candidates": 40,
-                                                                              "Hired": 25,
-                                                                              "Not Hired": 10,
-                                                                              "Offered Bootcamp": 5,
-                                                                              "Hire Rate (%)": 62.5
-                                                                          }
-                                                                      ],
-                                                                      "top_n": 3
-                                                                  })):
-    try:
-        # Convert to DataFrame
-        subject_data = pd.DataFrame(request.subject_data)
-        
-        # Generate recommendations
-        recommendations = generate_recommendations(subject_data, GROQ_API_KEY, request.top_n)
-        
-        return RecommendationResponse(recommendations=recommendations)
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to generate full report
+
+# @app.post("/recommendations", response_model=RecommendationResponse) 
+# async def get_recommendations(request: RecommendationRequest = Body(..., description="Subject metrics data")):
+#     try:
+#         # Convert to DataFrame
+#         subject_data = pd.DataFrame(request.subject_data)
+        
+#         # Generate recommendations
+#         recommendations = generate_recommendations(subject_data, GROQ_API_KEY, request.top_n)
+        
+#         return RecommendationResponse(recommendations=recommendations)
+        
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+# # Endpoint to generate full report
+
+
+
 @app.post("/report",response_model=ReportResponse)
 async def generate_full_report(file: UploadFile = File(..., description="Excel file containing NSP data")):
     try:
@@ -197,7 +180,7 @@ async def generate_full_report(file: UploadFile = File(..., description="Excel f
         # Generate report in markdown
         report_markdown = generate_report(subject_outcomes, recommendations)
         
-        # Convert markdown to HTML
+        # # Convert markdown to HTML
         report_html = markdown.markdown(report_markdown)
         
         return ReportResponse(
@@ -240,38 +223,38 @@ async def upload_cv(file: UploadFile = File(...)):
             status_code=500, detail=f"Error processing request: {str(e)}")
 
 
-@app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
-async def predict_applicant(applicant_data: ApplicantData):
-    """Predict applicant score and stage using provided data"""
-    from cv_screening.model_utils import model
+# @app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
+# async def predict_applicant(applicant_data: ApplicantData):
+#     """Predict applicant score and stage using provided data"""
+#     from cv_screening.model_utils import model
     
-    if model is None:
-        raise HTTPException(
-            status_code=503, detail="Model not loaded. Please try again later.")
+#     if model is None:
+#         raise HTTPException(
+#             status_code=503, detail="Model not loaded. Please try again later.")
 
-    try:
-        # Create CV text from applicant data
-        cv_text = create_cv_text(applicant_data)
+#     try:
+#         # Create CV text from applicant data
+#         cv_text = create_cv_text(applicant_data)
 
-        # Make prediction
-        score, stage, stage_confidences_data = predict_applicant_score(applicant_data, cv_text)
+#         # Make prediction
+#         score, stage, stage_confidences_data = predict_applicant_score(applicant_data, cv_text)
         
-        # Create stage confidences objects
-        stage_confidences = [
-            StageConfidence(stage=conf["stage"], confidence=conf["confidence"])
-            for conf in stage_confidences_data
-        ]
+#         # Create stage confidences objects
+#         stage_confidences = [
+#             StageConfidence(stage=conf["stage"], confidence=conf["confidence"])
+#             for conf in stage_confidences_data
+#         ]
 
-        return ApplicantPrediction(
-            position=applicant_data.position,
-            score=score,
-            predicted_stage=stage,
-            stage_confidences=stage_confidences
-        )
+#         return ApplicantPrediction(
+#             position=applicant_data.position,
+#             score=score,
+#             predicted_stage=stage,
+#             stage_confidences=stage_confidences
+#         )
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Prediction error: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500, detail=f"Prediction error: {str(e)}")
 
  
 if __name__ == "__main__":

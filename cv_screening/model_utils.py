@@ -24,7 +24,7 @@ def load_preprocessor():
     """Load the column transformer used during preprocessing"""
     try:
         # Fix path with proper os.path.join
-        preprocessed_path = os.path.join('cv_screening', 'preprocessed_data.npz')
+        preprocessed_path = "cv_screening/preprocessed_data.npz"
         preprocessed = np.load(preprocessed_path, allow_pickle=True)
         # This approach assumes feature dimensions are available in the existing files
         categorical_dim = preprocessed['X_train_cat'].shape[1]
@@ -148,7 +148,7 @@ def initialize_models():
     global tokenizer, bert_model, model, categorical_dim
     
     # Check if model file exists - use os.path.join for platform-independent paths
-    model_path = os.path.join('cv_screening', 'cv_scoring_model.pt')
+    model_path =  'cv_screening\cv_scoring_model.pt'
     if not os.path.exists(model_path):
         raise RuntimeError(f"Model file '{model_path}' not found. Please train the model first.")
 
