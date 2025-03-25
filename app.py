@@ -224,38 +224,38 @@ async def generate_full_report(file: UploadFile = File(..., description="Excel f
 
 
 
-# @app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
-# async def predict_applicant(applicant_data: ApplicantData):
-#     """Predict applicant score and stage using provided data"""
-#     from cv_screening.model_utils import model
+@app.post("/predict-hiring-score/", response_model=ApplicantPrediction)
+async def predict_applicant(applicant_data: ApplicantData):
+    """Predict applicant score and stage using provided data"""
+    from cv_screening.model_utils import model
     
-#     if model is None:
-#         raise HTTPException(
-#             status_code=503, detail="Model not loaded. Please try again later.")
+    if model is None:
+        raise HTTPException(
+            status_code=503, detail="Model not loaded. Please try again later.")
 
-#     try:
-#         # Create CV text from applicant data
-#         cv_text = create_cv_text(applicant_data)
+    try:
+        # Create CV text from applicant data
+        cv_text = create_cv_text(applicant_data)
 
-#         # Make prediction
-#         score, stage, stage_confidences_data = predict_applicant_score(applicant_data, cv_text)
+        # Make prediction
+        score, stage, stage_confidences_data = predict_applicant_score(applicant_data, cv_text)
         
-#         # Create stage confidences objects
-#         stage_confidences = [
-#             StageConfidence(stage=conf["stage"], confidence=conf["confidence"])
-#             for conf in stage_confidences_data
-#         ]
+        # Create stage confidences objects
+        stage_confidences = [
+            StageConfidence(stage=conf["stage"], confidence=conf["confidence"])
+            for conf in stage_confidences_data
+        ]
 
-#         return ApplicantPrediction(
-#             position=applicant_data.position,
-#             score=score,
-#             predicted_stage=stage,
-#             stage_confidences=stage_confidences
-#         )
+        return ApplicantPrediction(
+            position=applicant_data.position,
+            score=score,
+            predicted_stage=stage,
+            stage_confidences=stage_confidences
+        )
 
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, detail=f"Prediction error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Prediction error: {str(e)}")
 
  
 if __name__ == "__main__":
